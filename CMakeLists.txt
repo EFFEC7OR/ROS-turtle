@@ -30,8 +30,9 @@ add_executable(oop_stop src/3/oop_stop.cpp) # 3번 문제 OOP 스타일 파일 �
 add_executable(c_square src/4/c_square.cpp)   # 4번 문제 C 스타일 파일 추가
 add_executable(oop_square src/4/oop_square.cpp) # 4번 문제 OOP 스타일 파일 추가
 
-add_executable(c_mode src/5/c_mode.cpp)   # 5번 문제 C 스타일 파일 추가
-add_executable(oop_mode src/5/oop_mode.cpp) # 5번 문제 OOP 스타일 파일 추가
+# **중복된 타겟 이름을 수정하여 고유한 이름으로 변경**
+add_executable(c_mode src/5/c_mode.cpp)       # 5번 문제 C 스타일 파일 추가
+add_executable(oop_mode src/5/oop_mode.cpp)   # 5번 문제 OOP 스타일 파일 추가
 
 ## 실행 파일과 Catkin 라이브러리를 연결
 target_link_libraries(c_publisher ${catkin_LIBRARIES})   # c_publisher 노드를 catkin 라이브러리와 연결
@@ -42,6 +43,7 @@ target_link_libraries(c_stop ${catkin_LIBRARIES})        # c_stop 노드를 catk
 target_link_libraries(oop_stop ${catkin_LIBRARIES})      # oop_stop 노드를 catkin 라이브러리와 연결
 target_link_libraries(c_square ${catkin_LIBRARIES})      # c_square 노드를 catkin 라이브러리와 연결
 target_link_libraries(oop_square ${catkin_LIBRARIES})    # oop_square 노드를 catkin 라이브러리와 연결
+
+# **새로운 타겟을 연결**
 target_link_libraries(c_mode ${catkin_LIBRARIES})        # c_mode 노드를 catkin 라이브러리와 연결
 target_link_libraries(oop_mode ${catkin_LIBRARIES})      # oop_mode 노드를 catkin 라이브러리와 연결
-

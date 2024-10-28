@@ -1,113 +1,88 @@
 #include "ros/ros.h"
-#include "geometry_msgs/Twist.h"
 #include <iostream>
-#include <cmath>
+#include <thread>
+#include <atomic>
+#include <cstdlib>
 
-class TurtleMover
-{
+enum Mode {
+    NONE,
+    CIRCLE,
+    SQUARE
+};
+
+class ModeController {
 public:
-    TurtleMover()
-    {
-        pub = n.advertise<geometry_msgs::Twist>("/turtle1/cmd_vel", 1000);
-    }
+    ModeController() : current_mode(NONE), stop_flag(false) {}
 
-    void move_straight(double speed, double distance)
-    {
-        geometry_msgs::Twist msg;
-        msg.linear.x = speed;
-        ros::Rate loop_rate(10);
+    void start() {
+        input_thread = std::thread(&ModeController::handleUserInput, this);
 
-        for (int i = 0; i < 10 * distance; ++i)
-        {
-            pub.publish(msg);
+        while (ros::ok()) {
+            if (current_mode == CIRCLE && !stop_flag) {
+                std::cout << "Starting Circular Motion...\n";
+                system("rosrun ros_turtle c_circle &");
+                current_mode = NONE; 
+            }
+            else if (current_mode == SQUARE && !stop_flag) {
+                std::cout << "Starting Square Motion...\n";
+                system("rosrun ros_turtle c_square &");
+                current_mode = NONE;
+            }
+
             ros::spinOnce();
-            loop_rate.sleep();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
-        msg.linear.x = 0;
-        pub.publish(msg);
-    }
 
-    void rotate(double angular_speed, double relative_angle)
-    {
-        geometry_msgs::Twist msg;
-        msg.angular.z = angular_speed;
-        ros::Rate loop_rate(10);
-
-        for (int i = 0; i < 10 * relative_angle / angular_speed; ++i)
-        {
-            pub.publish(msg);
-            ros::spinOnce();
-            loop_rate.sleep();
-        }
-        msg.angular.z = 0;
-        pub.publish(msg);
-    }
-
-    void move_in_circle()
-    {
-        geometry_msgs::Twist msg;
-        msg.linear.x = 2.0;
-        msg.angular.z = 1.0;
-        ros::Rate loop_rate(10);
-
-        while (ros::ok())
-        {
-            pub.publish(msg);
-            ros::spinOnce();
-            loop_rate.sleep();
-        }
-    }
-
-    void move_in_square()
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            move_straight(2.0, 2.0);
-            rotate(M_PI / 2, M_PI / 2);
-        }
-    }
-
-    void stop()
-    {
-        geometry_msgs::Twist msg;
-        msg.linear.x = 0.0;
-        msg.angular.z = 0.0;
-        pub.publish(msg);
-    }
-
-    void choose_mode(int mode)
-    {
-        if (mode == 1)
-        {
-            move_in_circle();
-        }
-        else if (mode == 2)
-        {
-            move_in_square();
-        }
-        else if (mode == 3)
-        {
-            stop();
+        if (input_thread.joinable()) {
+            input_thread.join();
         }
     }
 
 private:
-    ros::NodeHandle n;
-    ros::Publisher pub;
+    ros::NodeHandle nh;
+    std::thread input_thread;
+    std::atomic<Mode> current_mode;
+    std::atomic<bool> stop_flag;
+
+    void handleUserInput() {
+        int choice;
+        while (ros::ok()) {
+            std::cout << "Select mode:\n"
+                      << "1. Circular Motion\n"
+                      << "2. Square Motion\n"
+                      << "3. Stop\n"
+                      << "Enter choice: ";
+            std::cin >> choice;
+
+            if (choice == 1) {
+                current_mode = CIRCLE;
+                stop_flag = false;
+            }
+            else if (choice == 2) {
+                current_mode = SQUARE;
+                stop_flag = false;
+            }
+            else if (choice == 3) {
+                std::cout << "Stopping all motions...\n";
+                system("pkill -f ros_turtle");
+                stop_flag = true;
+            }
+            else {
+                std::cout << "Invalid choice. Please select 1, 2, or 3.\n";
+            }
+
+            std::cout << "-------------------------------\n";
+        }
+    }
 };
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "oop_mode");
+    ros::NodeHandle nh;
 
-    TurtleMover mover;
-
-    int mode;
-    std::cout << "모드를 선택하세요 (1: 원 운동, 2: 정사각형 운동, 3: 정지): ";
-    std::cin >> mode;
-
-    mover.choose_mode(mode);
+    ModeController controller;
+    controller.start();
 
     return 0;
 }
-

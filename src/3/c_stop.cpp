@@ -3,46 +3,38 @@
 
 int main(int argc, char **argv)
 {
-    // ROS 노드 초기화
-    ros::init(argc, argv, "c_stop");
-    ros::NodeHandle n;
+    ros::init(argc, argv, "turtle_circle_motion");
+    ros::NodeHandle nh;
 
-    // 퍼블리셔 생성 (geometry_msgs/Twist 메시지를 /turtle1/cmd_vel 주제로 발행)
-    ros::Publisher pub = n.advertise<geometry_msgs::Twist>("/turtle1/cmd_vel", 1000);
+    ros::Publisher pub = nh.advertise<geometry_msgs::Twist>("/turtle1/cmd_vel", 10);
 
-    // 루프 속도 설정 (10Hz)
-    ros::Rate loop_rate(10);
-
-    // 메시지 객체 생성
     geometry_msgs::Twist msg;
 
-    // 선형 속도와 각속도를 설정하여 원형 경로를 만듦
-    msg.linear.x = 2.0;  // 선형 속도
-    msg.angular.z = 1.0; // 각속도
+    msg.linear.x = 2.0;  
+    msg.angular.z = 1.0; 
 
-    // 10초간 이동한 후 정지
-    ros::Time start_time = ros::Time::now();  // 시작 시간
+    ros::Rate rate(10); 
+    ros::Time start = ros::Time::now();
+    ros::Time last_info_time = ros::Time::now(); 
 
-    while (ros::ok())
+    while (ros::Time::now() - start < ros::Duration(10))
     {
-        ros::Duration elapsed_time = ros::Time::now() - start_time;
+        pub.publish(msg);
 
-        if (elapsed_time.toSec() < 10.0)
+        if (ros::Time::now() - last_info_time >= ros::Duration(1.0))
         {
-            // 10초 동안은 이동
-            pub.publish(msg);
-        }
-        else
-        {
-            // 10초 이후에는 정지
-            msg.linear.x = 0.0;
-            msg.angular.z = 0.0;
-            pub.publish(msg);
+            ROS_INFO("The turtle is moving in a circle.");
+            last_info_time = ros::Time::now(); 
         }
 
         ros::spinOnce();
-        loop_rate.sleep();
+        rate.sleep();
     }
+
+    msg.linear.x = 0.0;
+    msg.angular.z = 0.0;
+    pub.publish(msg);
+    ROS_INFO("The turtle moved in a circle for 10 seconds and then stopped.");
 
     return 0;
 }

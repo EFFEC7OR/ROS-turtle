@@ -1,97 +1,79 @@
 #include "ros/ros.h"
 #include "geometry_msgs/Twist.h"
-#include "turtlesim/Pose.h"
-#include <cmath>
 
-class TurtleSquareMover
+const double PI = 3.14159265358979323846;
+
+class SquareController
 {
 public:
-    TurtleSquareMover()
+    SquareController()
     {
-        pub = n.advertise<geometry_msgs::Twist>("/turtle1/cmd_vel", 1000);
-        sub = n.subscribe("/turtle1/pose", 10, &TurtleSquareMover::poseCallback, this);  // poseCallback을 멤버 함수로 연결
+        vel_pub = nh.advertise<geometry_msgs::Twist>("/turtle1/cmd_vel", 10);
     }
 
-    void move_straight(double speed, double distance)
+    void moveSquare(double side_length, double linear_speed, double angular_speed)
     {
-        geometry_msgs::Twist msg;
-        msg.linear.x = speed;
-        double start_x = current_pose.x;
-        double start_y = current_pose.y;
+        ros::Rate rate(10);
+        geometry_msgs::Twist vel_msg;
 
-        ros::Rate loop_rate(10);
-        while (ros::ok())
+        while(ros::ok())
         {
-            double distance_moved = std::sqrt(std::pow(current_pose.x - start_x, 2) + std::pow(current_pose.y - start_y, 2));
-            if (distance_moved >= distance)
+            for(int i = 0; i < 4 && ros::ok(); i++)
             {
-                msg.linear.x = 0;
-                pub.publish(msg);
-                break;
+                vel_msg.linear.x = linear_speed;
+                vel_msg.angular.z = 0.0;
+                ROS_INFO("Moving straight for side %d.", i+1);
+                ros::Time start = ros::Time::now();
+                while(ros::Time::now() - start < ros::Duration(side_length / linear_speed) && ros::ok())
+                {
+                    vel_pub.publish(vel_msg);
+                    ros::spinOnce();
+                    rate.sleep();
+                }
+
+                vel_msg.linear.x = 0.0;
+                vel_pub.publish(vel_msg);
+                ros::Duration(1.0).sleep();
+
+                vel_msg.angular.z = angular_speed;
+                ROS_INFO("Rotating for side %d.", i+1);
+                start = ros::Time::now();
+                while(ros::Time::now() - start < ros::Duration((PI / 2) / angular_speed) && ros::ok())
+                {
+                    vel_pub.publish(vel_msg);
+                    ros::spinOnce();
+                    rate.sleep();
+                }
+
+                vel_msg.angular.z = 0.0;
+                vel_pub.publish(vel_msg);
+                ros::Duration(1.0).sleep();
             }
-
-            pub.publish(msg);
-            ros::spinOnce();
-            loop_rate.sleep();
         }
-    }
 
-    void rotate(double angular_speed, double relative_angle)
-    {
-        geometry_msgs::Twist msg;
-        msg.angular.z = angular_speed;
-
-        ros::Rate loop_rate(10);
-        double start_time = ros::Time::now().toSec();
-        while (ros::ok())
-        {
-            double current_time = ros::Time::now().toSec();
-            double angle_moved = angular_speed * (current_time - start_time);
-            if (angle_moved >= relative_angle)
-            {
-                msg.angular.z = 0;
-                pub.publish(msg);
-                break;
-            }
-
-            pub.publish(msg);
-            ros::spinOnce();
-            loop_rate.sleep();
-        }
-    }
-
-    void move_in_square()
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            move_straight(2.0, 2.0);  // 선형 속도 2.0, 2m 이동
-            ros::Duration(1).sleep();  // 이동 후 잠시 대기
-
-            rotate(M_PI / 2, M_PI / 2);  // 각속도 M_PI/2, 90도 회전
-            ros::Duration(1).sleep();    // 회전 후 잠시 대기
-        }
+        vel_msg.linear.x = 0.0;
+        vel_msg.angular.z = 0.0;
+        vel_pub.publish(vel_msg);
+        ROS_INFO("Square movement completed.");
     }
 
 private:
-    ros::NodeHandle n;
-    ros::Publisher pub;
-    ros::Subscriber sub;
-    turtlesim::Pose current_pose;
-
-    // poseCallback을 멤버 함수로 선언 (static 아님)
-    void poseCallback(const turtlesim::Pose::ConstPtr& msg)
-    {
-        current_pose = *msg;
-    }
+    ros::NodeHandle nh;
+    ros::Publisher vel_pub;
 };
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "oop_square");
+    ros::NodeHandle nh;
 
-    TurtleSquareMover mover;
-    mover.move_in_square();
+    SquareController square;
+
+    double side_length = 2.0;    
+    double linear_speed = 1.0;    
+    double angular_speed = PI / 4; 
+
+    square.moveSquare(side_length, linear_speed, angular_speed);
 
     return 0;
 }
-
